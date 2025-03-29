@@ -25,17 +25,18 @@ class _GroceryListState extends State<GroceryList> {
     super.initState();
   }
 
+
   void _loadingData() async {
     final url = Uri.https(
         "flutter-pr-24217-default-rtdb.firebaseio.com", "shopping-list.json");
+    try{
     final response = await http.get(url);
-
-    if (response.statusCode >= 404) {
+    if (response.statusCode >= 400) {
       setState(() {
         _error = "Failed to load items";
       });
+      return;
     }
-
     final Map<String, dynamic> listData = jsonDecode(response.body);
     final List<GroceryItem> itemData = [];
     for (final item in listData.entries) {
@@ -54,6 +55,11 @@ class _GroceryListState extends State<GroceryList> {
       _groceryItem = itemData;
       isLoading = false;
     });
+  }catch(e){
+      setState(() {
+        _error = "Something went wrong";
+      });
+    }
   }
 
   void _addItem() async {
@@ -66,10 +72,20 @@ class _GroceryListState extends State<GroceryList> {
     });
   }
 
-  void _removedItem(GroceryItem item) {
+  void _removedItem(GroceryItem item) async {
+    final index = _groceryItem.indexOf(item);
     setState(() {
       _groceryItem.remove(item);
     });
+
+    final url = Uri.https(
+        "flutter-pr-24217-default-rtdb.firebaseio.com", "shopping-list.json");
+    final response = await http.delete(url);
+    if (response.statusCode >= 400) {
+      setState(() {
+        _groceryItem.insert(index, item);
+      });
+    }
   }
 
   @override
@@ -106,8 +122,10 @@ class _GroceryListState extends State<GroceryList> {
       );
     }
 
-    if(_error!=null){
-      content=Center(child: Text(_error!),);
+    if (_error != null) {
+      content = Center(
+        child: Text(_error!),
+      );
     }
     return Scaffold(
       appBar: AppBar(
